@@ -7,7 +7,9 @@ requires-python = ">=3.13"
 dependencies = [
     "aiosqlite>=0.22.1",
     "fastapi>=0.139.0",
+    "openai>=2.45.0",
     "pydantic-settings>=2.14.2",
+    "python-docx>=1.2.0",
     "python-multipart>=0.0.32",
     "sqlalchemy[asyncio]>=2.0",
     "uvicorn[standard]>=0.51.0",

@@ -23,9 +23,14 @@ class AppSettings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./cv_analyzer.db"
     db_echo: bool = False
 
+    # --- LLM ---
+    openai_api_key: str
+    openai_model: str = "gpt-5.4-mini"
+
     # --- File Storage ---
     data_dir: Path = BASE_DIR / "data"
     max_upload_bytes: int = 5 * 1024 * 1024   # 5MB
+    max_docx_chars: int = 30_000
     allowed_resume_extensions: set[str] = {".pdf", ".docx"}
 
 

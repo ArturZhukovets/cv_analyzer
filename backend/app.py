@@ -7,11 +7,9 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
-    create_async_engine,
 )
 
-from api.routes import setup_routes
-from configs.settings import AppSettings, settings
+from configs.settings import AppSettings
 from database import DatabaseManager
 from models import Base
 from services import DocumentParser, LLMService
@@ -43,18 +41,3 @@ class App(FastAPI):
             version=app_settings.app_version,
             lifespan=lifespan,
         )
-
-
-def create_app(app_settings: AppSettings = settings) -> App:
-    engine = create_async_engine(
-        app_settings.database_url,
-        echo=app_settings.db_echo,
-    )
-    session_maker = async_sessionmaker(engine, expire_on_commit=False)
-    app = App(
-        app_settings=app_settings,
-        db_engine=engine,
-        db_session_maker=session_maker,
-    )
-    setup_routes(app)
-    return app

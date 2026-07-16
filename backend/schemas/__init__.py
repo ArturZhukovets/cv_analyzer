@@ -1,3 +1,3 @@
-from schemas.resume import ResumeRead
+from schemas.resume import ExperienceEntry, ExtractedResume, ResumeRead
 
-__all__ = ["ResumeRead"]
+__all__ = ["ExperienceEntry", "ExtractedResume", "ResumeRead"]

@@ -1,7 +1,6 @@
 from collections.abc import AsyncGenerator
-from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import App
