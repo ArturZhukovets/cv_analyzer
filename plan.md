@@ -95,7 +95,6 @@ the `assessment` text below. Everything reads from persisted `JobResult` — rep
 views cost zero LLM calls.
 
 
-
 ## 4. Q&A over a run — `/ask`
 
 The point of the product: answer free-form questions about fit, gaps, and prep.

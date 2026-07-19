@@ -7,12 +7,14 @@ from openai import AsyncOpenAI
 
 from configs.settings import AppSettings
 from schemas import ExtractedResume, JobAnalysis
-from services.analysis import build_analysis_input
+from services.analysis import build_user_input
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 PARSE_CV_PROMPT = (PROMPTS_DIR / "parse_cv.md").read_text(encoding="utf-8")
 ANALYZE_JOB_PROMPT = (PROMPTS_DIR / "analyze_job.md").read_text(encoding="utf-8")
+ASK_RUN_PROMPT = (PROMPTS_DIR / "ask_run.md").read_text(encoding="utf-8")
+COVER_LETTER_PROMPT = (PROMPTS_DIR / "cover_letter.md").read_text(encoding="utf-8")
 
 
 class LLMService:
@@ -76,7 +78,48 @@ class LLMService:
         response = await self._client.responses.parse(
             model=self._app_settings.openai_strong_model,
             instructions=ANALYZE_JOB_PROMPT,
-            input=build_analysis_input(cv_json, job_text),
+            input=build_user_input(
+                {
+                    "Candidate CV (structured JSON)": cv_json,
+                    "Job posting (raw text)": job_text,
+                }
+            ),
             text_format=JobAnalysis,
         )
         return response.output_parsed
+
+    async def answer_run_question(
+        self, cv_json: dict[str, Any], jobs: list[dict[str, Any]], question: str
+    ) -> str:
+        """Free-form Q&A over a whole run: CV JSON + every job's raw text and computed
+        analysis are stuffed into context (no RAG) and answered by the strong model."""
+        response = await self._client.responses.create(
+            model=self._app_settings.openai_strong_model,
+            instructions=ASK_RUN_PROMPT,
+            input=build_user_input(
+                {
+                    "Candidate CV (structured JSON)": cv_json,
+                    "Jobs in this run (raw posting + computed analysis)": jobs,
+                    "Question": question,
+                }
+            ),
+        )
+        return response.output_text
+
+    async def write_cover_letter(
+        self, cv_json: dict[str, Any], job_text: str, analysis: dict[str, Any]
+    ) -> str:
+        """Generate a markdown cover letter for one job from the CV JSON, the raw posting,
+        and that job's computed analysis, on the strong model."""
+        response = await self._client.responses.create(
+            model=self._app_settings.openai_strong_model,
+            instructions=COVER_LETTER_PROMPT,
+            input=build_user_input(
+                {
+                    "Candidate CV (structured JSON)": cv_json,
+                    "Job posting (raw text)": job_text,
+                    "Computed analysis for this job": analysis,
+                }
+            ),
+        )
+        return response.output_text

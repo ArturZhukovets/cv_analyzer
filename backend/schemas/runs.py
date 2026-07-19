@@ -14,6 +14,15 @@ JobText = Annotated[
     ),
 ]
 
+Question = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=2000,
+    ),
+]
+
 
 class RunCreate(BaseModel):
     resume_id: int = Field(gt=0)
@@ -37,3 +46,23 @@ class RunDetailRead(BaseModel):
     resume_id: int
     created_at: datetime
     jobs: list[RunJobResultRead]
+
+
+class RunSummaryRead(BaseModel):
+
+    run_id: int
+    resume_id: int
+    resume_filename: str
+    job_count: int
+    best_recommendation: str | None = None
+    created_at: datetime
+
+
+class RunAskRequest(BaseModel):
+    question: Question
+
+
+class RunAskResponse(BaseModel):
+    run_id: int
+    question: str
+    answer: str

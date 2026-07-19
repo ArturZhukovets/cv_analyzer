@@ -54,3 +54,15 @@ class JobAnalysis(BaseModel):
             "that matter most. This is the headline the user reads."
         )
     )
+
+
+class CoverLetterRequest(BaseModel):
+    regenerate: bool = Field(
+        default=False,
+        description="When true, force a fresh LLM call instead of returning the cached letter.",
+    )
+
+
+class CoverLetterRead(BaseModel):
+    job_id: int
+    cover_letter_md: str

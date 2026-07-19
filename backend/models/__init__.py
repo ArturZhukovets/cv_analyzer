@@ -6,8 +6,7 @@ creation and relationship resolution see the full schema.
 
 from .base import Base
 from .job import Job
-from .job_result import JobResult
 from .resume import Resume
 from .run import Run
 
-__all__ = ["Base", "Resume", "Run", "Job", "JobResult"]
+__all__ = ["Base", "Resume", "Run", "Job"]

@@ -3,13 +3,8 @@ from collections.abc import AsyncGenerator
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import App
 from configs.settings import AppSettings
 from services import DocumentParser, LLMService
-
-
-def get_app(request: Request) -> App:
-    return request.app
 
 
 def get_settings(request: Request) -> AppSettings:
