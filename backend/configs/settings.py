@@ -25,7 +25,9 @@ class AppSettings(BaseSettings):
 
     # --- LLM ---
     openai_api_key: str
+    # Cheap model for extraction/adjudication; stronger model for narrative judgment.
     openai_model: str = "gpt-5.4-mini"
+    openai_strong_model: str = "gpt-5.4"
 
     # --- File Storage ---
     data_dir: Path = BASE_DIR / "data"

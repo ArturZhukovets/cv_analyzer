@@ -1,19 +1,23 @@
 import base64
 import mimetypes
 from pathlib import Path
+from typing import Any
 
 from openai import AsyncOpenAI
 
 from configs.settings import AppSettings
-from schemas import ExtractedResume
+from schemas import ExtractedResume, JobAnalysis
+from services.analysis import build_analysis_input
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 PARSE_CV_PROMPT = (PROMPTS_DIR / "parse_cv.md").read_text(encoding="utf-8")
+ANALYZE_JOB_PROMPT = (PROMPTS_DIR / "analyze_job.md").read_text(encoding="utf-8")
 
 
 class LLMService:
-    """All LLM calls live here: extraction, adjudication, narrative judgment.
+    """
+    All LLM calls live here: extraction, adjudication, narrative judgment.
 
     Deterministic logic (scoring, skill overlap) must never end up in this class —
     see plan.md "Analysis Pipeline".
@@ -58,5 +62,21 @@ class LLMService:
             instructions=PARSE_CV_PROMPT,
             input=text,
             text_format=ExtractedResume,
+        )
+        return response.output_parsed
+
+    async def analyze_job(
+        self, cv_json: dict[str, Any], job_text: str
+    ) -> JobAnalysis | None:
+        """
+        Compare the CV JSON against one job posting in a single structured call on the
+        strong model. Returns the schema-validated `JobAnalysis`, or None if the model
+        returned nothing. Invalid postings still parse, with `is_valid_job_posting: false`.
+        """
+        response = await self._client.responses.parse(
+            model=self._app_settings.openai_strong_model,
+            instructions=ANALYZE_JOB_PROMPT,
+            input=build_analysis_input(cv_json, job_text),
+            text_format=JobAnalysis,
         )
         return response.output_parsed

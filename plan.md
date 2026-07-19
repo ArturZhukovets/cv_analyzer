@@ -9,72 +9,157 @@ locally with `python-docx` and capped by `max_docx_chars`.
 
 Steps below are in implementation order.
 
+## Progress status (updated)
+
+- ✅ **Point 2 (Analysis) core is implemented**: prompt, pure input builder,
+  strong-model structured call (`JobAnalysis`), parallel `analyze_run`, and
+  per-job error isolation.
+- ⏳ **Point 2 step 5 is pending by design**: invocation happens inside
+  `POST /api/runs`, which belongs to point 1.
+- ⏭️ **Next to implement**: point 1 (`POST /api/runs`) first, then point 3
+  (`GET /api/runs/{id}`), then point 4 (`/ask`).
+
 ---
+
+## User flow (two explicit steps)
+
+1. **CV step** — upload a new CV or select a previously uploaded one. Nothing else
+  is reachable until a resume is chosen.
+2. **Jobs step** — paste 1–10 job descriptions against the selected CV → analysis runs.
+
+The API enforces this: creating a run requires a valid `resume_id` whose extraction
+succeeded (`400` otherwise). The frontend mirrors it as two screens.
 
 ## 1. Jobs input
 
-- Endpoint accepting 1–10 pasted job texts (with length caps) → creates a `Run`
-  + `Job` rows, kicks off analysis.
-- Optional: URL field → best-effort fetch to prefill text (many boards block bots;
-  pasted text stays the reliable path).
+- `POST /api/runs` — body: `resume_id` + 1–5 pasted job texts (per-text length cap). Validates the resume exists and has parsed CV JSON, creates a `Run` + `Job` rows,
+kicks off analysis, returns `run_id`.
+- Pasted text only. No URL fetching (most boards block bots; not worth the code).
 
-## 2. Analysis pipeline
+**Build steps**
 
-Order: extract jobs → match skills → score → return diff immediately → narrate → persist.
-Extraction and narration run per-job in parallel (`asyncio.gather`).
+1. `schemas/runs.py` — `RunCreate` (`resume_id: int`, `job_texts: list[str]` with
+   `min_length=1`, `max_length=5`, per-item length cap) and a `RunRead` response
+   (`run_id`, `resume_id`, `created_at`).
+2. Router `routers/runs.py`, `POST /api/runs`: load the resume; `400` if missing or
+   `parsed_json is None`. Create the `Run`, then one `Job` row per pasted text.
+3. Kick off analysis (§2) for all jobs, then return `run_id`.
+   - Wire the already-implemented `analyze_run(run, db, llm)` here.
+   - MVP: run inline (await before response). Switch to background only if
+     latency hurts.
+4. Register the router in the app factory.
 
-- **Job extraction** — cheap-model call per job, free text → job JSON
-  (`is_valid_job_posting`, title, company, seniority, required/preferred skills,
-  years_required, responsibilities). Invalid postings marked `is_valid=False`, skipped.
-- **Skill matching** — `bge-small-en-v1.5` embeddings, cosine similarity between job
-  and CV skills. >0.85 auto-match, 0.65–0.85 one batched LLM adjudication call,
-  <0.65 gap. In-memory numpy only.
-- **Score** — pure function, unit-testable, no LLM:
-  `(1.0 * req_matched/req_total + 0.5 * pref_matched/pref_total) / 1.5`
-- **Narrative** — one strong-model call per job (second model tier, add to settings):
-  CV JSON + job JSON + computed diff + score →
-  `{verdict, strengths, weaknesses, recommendation}`. It explains gaps, never recomputes
-  them. Prompt: don't contradict the score, cite real roles/companies, refuse off-topic.
-- Persist everything to `JobResult`.
 
-## 3. Results + interview questions
+## 2. Analysis — one LLM call per job
 
-- Results endpoint/page: job cards sorted by score — score, verdict, matched (green) /
-  gap (red) skill chips, narrative below. Show the deterministic diff instantly,
-  stream narratives in after.
-- "Generate interview questions" — lazy LLM call reusing the computed gaps/strengths,
-  persisted to `interview_qs_md`.
+No embeddings, no separate extraction/matching/narration stages. Per job, one
+structured call (strong model), all jobs in parallel via `asyncio.gather`. Output
+is the `JobAnalysis` schema (`schemas/jobs.py`), persisted to `JobResult`.
 
-## 4. History
+- **Input**: CV JSON + raw job text.
+- **Output** (schema-validated, persisted to `JobResult.result_json`):
+  - Job fields: `is_valid_job_posting`, `rejection_reason`, `title`, `company`,
+  `seniority`, `years_required`.
+  - `skills`: one flat `list[JobSkill]` — each `{name, matched}`, no
+  required/preferred split. Frontend filters on `matched` for green/red chips.
+  - Judgment: `recommendation` (enum `strong_fit | possible_fit | stretch |
+  not_a_fit`) + `assessment` (free-text verdict: fit rationale, strengths grounded
+  in real CV roles, and the gaps that matter).
+  - Invalid postings get `is_valid_job_posting=False` + `rejection_reason` and skip
+  the comparison fields.
+- No numeric score — the qualitative `recommendation` carries ranking/sorting.
+- Prompt rules: match skills semantically (e.g. "Django" satisfies "Python web
+frameworks"), cite only roles/companies that exist in the CV JSON, never invent
+skills on either side.
 
-- List runs (CV name, job count, best score, date); click through renders fully
-  cached results with zero LLM calls.
+**Build steps** *(steps 1–4 already done; step 5 depends on point 1 router)*
 
-## 5. Frontend
+1. Prompt builder — a pure function `(cv_json, job_text) -> messages`, embedding the
+   rules above. Keep it testable without an API key.
+2. Service `services/analysis.py`: `analyze_job(cv_json, job_text) -> JobAnalysis`
+   via `client.responses.parse(..., text_format=JobAnalysis)` on the strong model.
+3. `analyze_run(run)` — gather `analyze_job` over all jobs with `asyncio.gather`;
+   persist each `JobAnalysis` to its `JobResult.result_json`.
+4. Error isolation — wrap each job so one failure doesn't sink the batch; record a
+   failed marker on that `JobResult` instead.
+5. Invocation — MVP can run analysis inline in `POST /api/runs` (await before
+   responding); switch to a background task only if latency hurts.
 
-- Pick one (Jinja or React) and commit to it. Pages: CV upload/select, jobs input,
-  results, history.
 
-## 6. Guardrails & observability
 
-- Post-check: every company/role cited in a narrative must exist in the CV JSON.
-- Structured JSON logs with `run_id` as trace ID; per-stage model/tokens/cost/latency,
-  persisted on `JobResult`, surfaced in a `/debug/runs` view.
+## 3. Results
 
-## 7. Testing
+- `GET /api/runs/{id}` — job cards sorted by `recommendation` (strong_fit first):
+recommendation badge, matched (green) / missing (red) skill chips from `skills`, and
+the `assessment` text below. Everything reads from persisted `JobResult` — repeat
+views cost zero LLM calls.
 
-- Unit: schema validation, score math, skill matcher against fixtures — no API key needed.
-- Golden set: 5 CVs × 5 jobs, assert exact gap sets. Mock LLM client everywhere.
-- LLM-as-judge on narratives — small, manual, non-blocking.
 
-## 8. Packaging
+
+## 4. Q&A over a run — `/ask`
+
+The point of the product: answer free-form questions about fit, gaps, and prep.
+
+- `POST /api/runs/{id}/ask` — body: `question`. Stuff CV JSON + all job JSONs +
+computed results into context (it all fits; no RAG), answer with the strong model.
+Handles "What skills am I missing for this role?", "How does my experience align
+with Job #2?", and interview-prep questions — no separate interview-questions
+feature needed.
+- Single question → answer. No chat history, no sessions.
+- Prompt: answer only from the provided CV/jobs/results, don't contradict the
+persisted `recommendation`/`assessment`/matched skills, refuse off-topic questions.
+
+
+
+## 5. Cover letter — per job
+
+- `POST /api/jobs/{id}/cover-letter` — one strong-model call: CV JSON + job JSON +
+computed match results → short, concise cover letter (markdown) tailored to that
+job, leaning on the persisted `assessment` and citing only real CV experience.
+- Persist to `JobResult.cover_letter_md`; repeat calls return the cached letter
+unless `regenerate=true`.
+
+
+
+## 6. History
+
+- `GET /api/runs` — list runs (CV name, job count, best `recommendation`, date);
+click through renders fully cached results with zero LLM calls.
+
+
+
+## 7. Frontend
+
+- React — Vite + React 19 + TS SPA in `frontend/` (scaffolded; see root `CLAUDE.md`).
+- Screens follow the two-step flow: (1) CV upload/select → (2) jobs input →
+results (with ask box + per-job cover-letter button) → history.
+
+
+
+## 8. Testing
+
+- Unit: schema validation, prompt builder output — no API key needed.
+- Fixtures: a few CV JSON + job-text pairs with a mocked `JobAnalysis` response.
+Mock LLM client everywhere.
+
+
+
+## 9. Packaging
 
 - Docker + compose, `make dev` / `make test`.
 
 ---
 
+
+
+## Deferred until the core loop works (don't build yet)
+
+Narrative guardrail post-check (cited companies exist in CV JSON), structured JSON
+logs with `run_id` tracing + per-stage token/cost accounting, golden-set eval
+(5 CVs × 5 jobs), LLM-as-judge.
+
 ## Deliberately skipped (don't build)
 
-Auth/multi-tenancy, vector DB (in-memory numpy handles ~40 vectors), RAG/chunking
-(corpus fits in context; chunking a CV degrades quality), reranking, chat interface,
-CV rewriting.
+Auth/multi-tenancy, embeddings/vector DB (LLM matches skills semantically in the
+analysis call), RAG/chunking (corpus fits in context; chunking a CV degrades
+quality), reranking, chat history/sessions, CV rewriting, job URL fetching.

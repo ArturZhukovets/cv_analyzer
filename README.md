@@ -5,8 +5,8 @@ how well you fit each role, and what to prepare for in an interview.
 
 ## Setup
 
-    cp .env.example .env      # add ANTHROPIC_API_KEY
-    docker compose up         # → http://localhost:8000
+    cp .env.example .env      # add OPENAI_API_KEY
+    ./run.sh                  # → http://localhost:8000
 
 ## Flow
 

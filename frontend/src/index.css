@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "@fontsource-variable/bricolage-grotesque";
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", var(--font-sans);
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-paper: oklch(97.7% 0.003 240);
+  --color-ink: oklch(26% 0.02 255);
+  --color-ink-muted: oklch(50% 0.018 255);
+  --color-ink-faint: oklch(68% 0.014 255);
+  --color-line: oklch(90% 0.006 250);
+  --color-accent: oklch(46% 0.085 215);
+  --color-accent-deep: oklch(38% 0.078 215);
+
+  --color-fit-strong: oklch(52% 0.12 160);
+  --color-fit-possible: oklch(50% 0.09 235);
+  --color-fit-stretch: oklch(58% 0.12 70);
+  --color-fit-none: oklch(52% 0.15 20);
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+}
