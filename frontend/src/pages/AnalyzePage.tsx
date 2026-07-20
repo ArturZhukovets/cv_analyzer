@@ -110,7 +110,7 @@ export default function AnalyzePage() {
   return (
     <div className="space-y-10">
       <section>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
           How well does your CV fit?
         </h1>
         <p className="mt-2 max-w-prose text-ink-muted">

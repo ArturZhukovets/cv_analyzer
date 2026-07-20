@@ -285,9 +285,9 @@ export default function RunPage() {
   const run = runQuery.data;
   return (
     <div className="space-y-6">
-      <section className="flex items-baseline justify-between">
+      <section className="flex items-baseline justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">Your results</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Your results</h1>
           <p className="mt-1 font-mono text-xs text-ink-muted">
             Run #{run.run_id} · {formatDate(run.created_at)} · {run.jobs.length}{" "}
             {run.jobs.length === 1 ? "job" : "jobs"} · sorted by best fit
@@ -295,7 +295,7 @@ export default function RunPage() {
         </div>
         <Link
           to="/"
-          className="text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="shrink-0 text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           New analysis
         </Link>

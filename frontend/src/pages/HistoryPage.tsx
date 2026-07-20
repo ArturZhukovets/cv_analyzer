@@ -12,16 +12,16 @@ export default function HistoryPage() {
 
   return (
     <section>
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">Your analyses</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Your analyses</h1>
           <p className="mt-1 text-sm text-ink-muted">
             Opening one shows its saved results — it won't start a new analysis.
           </p>
         </div>
         <Link
           to="/"
-          className="rounded-sm text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="shrink-0 rounded-sm text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           New analysis
         </Link>
