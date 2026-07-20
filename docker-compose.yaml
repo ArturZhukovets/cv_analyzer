@@ -36,10 +36,9 @@ services:
       - certbot-certs:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
       - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
-    # docker-entrypoint still runs first (envsubst on the template); then this
-    # exec's, reloading nginx every 6h so renewed certs are picked up.
     command: >
-      /bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'
+      /bin/sh -c '/docker-entrypoint.d/20-envsubst-on-templates.sh;
+      while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'
 
   certbot:
     image: certbot/certbot
