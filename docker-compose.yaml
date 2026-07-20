@@ -8,6 +8,12 @@ services:
       DATABASE_URL: sqlite+aiosqlite:////app/data/cv_analyzer.db
       DATA_DIR: /app/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/openapi.json')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - app-network
     volumes:
@@ -17,11 +23,33 @@ services:
     build: ./frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?set SERVER_NAME in .env (e.g. 203-0-113-5.sslip.io)}
+    ports:
+      - "80:80"
+      - "443:443"
     networks:
       - app-network
-    ports:
-      - ${APP_PORT:-8000}:80
+    volumes:
+      - certbot-certs:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+    # docker-entrypoint still runs first (envsubst on the template); then this
+    # exec's, reloading nginx every 6h so renewed certs are picked up.
+    command: >
+      /bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'
+
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-certs:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    # Attempt renewal twice a day; certbot only acts within 30 days of expiry.
+    entrypoint: >
+      /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done'
 
 networks:
   app-network:
@@ -29,3 +57,5 @@ networks:
 
 volumes:
   backend-data:
+  certbot-certs:
+  certbot-webroot:

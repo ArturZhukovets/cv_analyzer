@@ -1,6 +1,6 @@
-import type { Recommendation } from "@/api/types";
+import type { RunVerdict } from "@/api/types";
 
-export const VERDICTS: Record<Recommendation, { label: string; badge: string; rail: string }> = {
+export const VERDICTS: Record<RunVerdict, { label: string; badge: string; rail: string }> = {
   strong_fit: {
     label: "Strong fit",
     badge: "border-fit-strong/40 bg-fit-strong/10 text-fit-strong",
@@ -20,5 +20,10 @@ export const VERDICTS: Record<Recommendation, { label: string; badge: string; ra
     label: "Not a fit",
     badge: "border-fit-none/40 bg-fit-none/10 text-fit-none",
     rail: "bg-fit-none",
+  },
+  invalid: {
+    label: "Not a posting",
+    badge: "border-line bg-paper text-ink-muted",
+    rail: "bg-ink-faint",
   },
 };

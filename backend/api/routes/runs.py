@@ -66,17 +66,32 @@ def _sort_key(job_result: RunJobResultRead) -> tuple[int, int]:
     return (recommendation_rank, job_result.job_id)
 
 
-def _best_recommendation(jobs: list[Job]) -> str | None:
-    """The strongest verdict across a run's jobs (strong_fit first); null if none
-    of the jobs produced a valid analysis."""
-    recommendations = [
-        job.result_json["recommendation"]
+def _run_verdict(jobs: list[Job]) -> tuple[str | None, str | None]:
+    """The run's headline verdict and the title of the job that earned it.
+
+    Only *valid* postings count toward the fit verdict, so a `not_a_fit` the LLM
+    attaches to a non-posting never surfaces as the run's result. When the run's
+    only analyzed postings weren't real job descriptions, the verdict is
+    `"invalid"`; when nothing was analyzed at all, it's null.
+    """
+    valid = [
+        job.result_json
         for job in jobs
-        if job.result_json and "recommendation" in job.result_json
+        if job.result_json
+        and job.result_json.get("is_valid_job_posting")
+        and "recommendation" in job.result_json
     ]
-    if not recommendations:
-        return None
-    return min(recommendations, key=lambda rec: RECOMMENDATION_ORDER.get(rec, 98))
+    if valid:
+        best = min(
+            valid, key=lambda r: RECOMMENDATION_ORDER.get(r["recommendation"], 98)
+        )
+        return best["recommendation"], best.get("title")
+
+    has_invalid = any(
+        job.result_json and job.result_json.get("is_valid_job_posting") is False
+        for job in jobs
+    )
+    return ("invalid", None) if has_invalid else (None, None)
 
 
 @router.get("")
@@ -89,17 +104,22 @@ async def list_runs(
         .order_by(Run.created_at.desc())
     )
     runs = result.scalars().all()
-    return [
-        RunSummaryRead(
-            run_id=run.id,
-            resume_id=run.resume_id,
-            resume_filename=run.resume.filename,
-            job_count=len(run.jobs),
-            best_recommendation=_best_recommendation(run.jobs),
-            created_at=run.created_at,
+    summaries: list[RunSummaryRead] = []
+    for run in runs:
+        best_recommendation, top_job_title = _run_verdict(run.jobs)
+        summaries.append(
+            RunSummaryRead(
+                run_id=run.id,
+                resume_id=run.resume_id,
+                resume_filename=run.resume.filename,
+                candidate_name=(run.resume.parsed_json or {}).get("candidate_name"),
+                top_job_title=top_job_title,
+                job_count=len(run.jobs),
+                best_recommendation=best_recommendation,
+                created_at=run.created_at,
+            )
         )
-        for run in runs
-    ]
+    return summaries
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

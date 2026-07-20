@@ -1,19 +1,48 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 
-import { formatDate } from "@/lib/format";
-import { listRecentRuns } from "@/lib/runHistory";
+import { ApiError, listRuns } from "@/api/client";
+import { queryKeys } from "@/api/keys";
+import RunList, { RunListSkeleton } from "@/components/RunList";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 export default function HistoryPage() {
-  const runs = listRecentRuns();
+  useDocumentTitle("Your analyses");
+  const runsQuery = useQuery({ queryKey: queryKeys.runs.all, queryFn: listRuns });
 
   return (
     <section>
-      <h1 className="font-display text-3xl font-semibold tracking-tight">History</h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        Analyses from this browser. Opening one re-reads saved results — no new analysis runs.
-      </p>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">Your analyses</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Opening one shows its saved results — it won't start a new analysis.
+          </p>
+        </div>
+        <Link
+          to="/"
+          className="rounded-sm text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          New analysis
+        </Link>
+      </div>
 
-      {runs.length === 0 ? (
+      {runsQuery.isLoading && (
+        <div className="mt-6">
+          <RunListSkeleton rows={4} />
+        </div>
+      )}
+
+      {runsQuery.isError && (
+        <p className="mt-6 text-sm text-fit-none">
+          Couldn't load history:{" "}
+          {runsQuery.error instanceof ApiError
+            ? runsQuery.error.detail
+            : "something went wrong."}
+        </p>
+      )}
+
+      {runsQuery.data?.length === 0 && (
         <p className="mt-6 rounded-md border border-dashed border-line bg-white px-4 py-8 text-center text-sm text-ink-muted">
           Nothing here yet.{" "}
           <Link to="/" className="text-accent hover:underline">
@@ -21,28 +50,12 @@ export default function HistoryPage() {
           </Link>{" "}
           and it will show up here.
         </p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line rounded-md border border-line bg-white">
-          {runs.map((run) => (
-            <li key={run.run_id}>
-              <Link
-                to={`/runs/${run.run_id}`}
-                className="flex items-baseline justify-between gap-4 px-4 py-3 hover:bg-accent/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{run.resume_label}</span>
-                  <span className="font-mono text-xs text-ink-muted">
-                    Run #{run.run_id} · {run.job_count}{" "}
-                    {run.job_count === 1 ? "posting" : "postings"}
-                  </span>
-                </span>
-                <span className="shrink-0 font-mono text-xs text-ink-faint">
-                  {formatDate(run.created_at)}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      )}
+
+      {runsQuery.data && runsQuery.data.length > 0 && (
+        <div className="mt-6">
+          <RunList runs={runsQuery.data} />
+        </div>
       )}
     </section>
   );

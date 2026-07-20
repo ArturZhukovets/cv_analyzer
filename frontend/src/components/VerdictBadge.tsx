@@ -1,7 +1,7 @@
-import type { Recommendation } from "@/api/types";
+import type { RunVerdict } from "@/api/types";
 import { VERDICTS } from "@/lib/verdicts";
 
-export default function VerdictBadge({ recommendation }: { recommendation: Recommendation }) {
+export default function VerdictBadge({ recommendation }: { recommendation: RunVerdict }) {
   const verdict = VERDICTS[recommendation];
   return (
     <span

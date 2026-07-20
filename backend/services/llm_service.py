@@ -22,7 +22,6 @@ class LLMService:
     All LLM calls live here: extraction, adjudication, narrative judgment.
 
     Deterministic logic (scoring, skill overlap) must never end up in this class —
-    see plan.md "Analysis Pipeline".
     """
 
     def __init__(self, app_settings: AppSettings) -> None:

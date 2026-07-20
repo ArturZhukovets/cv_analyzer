@@ -53,6 +53,8 @@ class RunSummaryRead(BaseModel):
     run_id: int
     resume_id: int
     resume_filename: str
+    candidate_name: str | None = None
+    top_job_title: str | None = None
     job_count: int
     best_recommendation: str | None = None
     created_at: datetime

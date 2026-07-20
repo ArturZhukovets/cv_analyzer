@@ -1,4 +1,12 @@
-import type { ResumeRead, RunCreate, RunDetailRead, RunRead } from "@/api/types";
+import type {
+  CoverLetterRead,
+  ResumeRead,
+  RunAskResponse,
+  RunCreate,
+  RunDetailRead,
+  RunRead,
+  RunSummaryRead,
+} from "@/api/types";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -52,4 +60,24 @@ export function createRun(payload: RunCreate): Promise<RunRead> {
 
 export function getRun(runId: number): Promise<RunDetailRead> {
   return request(`/runs/${runId}`);
+}
+
+export function listRuns(): Promise<RunSummaryRead[]> {
+  return request("/runs");
+}
+
+export function askRun(runId: number, question: string): Promise<RunAskResponse> {
+  return request(`/runs/${runId}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+}
+
+export function createCoverLetter(jobId: number, regenerate = false): Promise<CoverLetterRead> {
+  return request(`/jobs/${jobId}/cover-letter`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ regenerate }),
+  });
 }

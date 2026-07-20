@@ -16,7 +16,6 @@ class Resume(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
-    # NULL until LLM extraction runs (or after it fails) — see plan.md "CV Page"
     parsed_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     runs: Mapped[list[Run]] = relationship(

@@ -1,15 +1,18 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
-import { ApiError, createRun, listResumes, uploadResume } from "@/api/client";
+import { ApiError, createRun, listResumes, listRuns, uploadResume } from "@/api/client";
 import { queryKeys } from "@/api/keys";
 import type { ResumeRead } from "@/api/types";
+import Button from "@/components/Button";
+import RunList from "@/components/RunList";
 import { formatDate } from "@/lib/format";
-import { rememberRun } from "@/lib/runHistory";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 const MAX_JOBS = 5;
 const MAX_JOB_CHARS = 20000;
+const RECENT_RUNS = 5;
 
 function resumeLabel(resume: ResumeRead): string {
   return resume.parsed_json?.candidate_name ?? resume.filename;
@@ -59,7 +62,7 @@ function ResumeOption({
           {resume.filename} · {formatDate(resume.created_at)}
           {extracted
             ? ` · ${resume.parsed_json!.skills.length} skills`
-            : " · extraction failed — not usable"}
+            : " · couldn't read this file"}
         </span>
       </span>
     </label>
@@ -67,6 +70,7 @@ function ResumeOption({
 }
 
 export default function AnalyzePage() {
+  useDocumentTitle("Analyze");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,6 +79,7 @@ export default function AnalyzePage() {
   const [jobTexts, setJobTexts] = useState<string[]>([""]);
 
   const resumesQuery = useQuery({ queryKey: queryKeys.resumes.all, queryFn: listResumes });
+  const runsQuery = useQuery({ queryKey: queryKeys.runs.all, queryFn: listRuns });
 
   const upload = useMutation({
     mutationFn: uploadResume,
@@ -86,14 +91,8 @@ export default function AnalyzePage() {
 
   const analyze = useMutation({
     mutationFn: createRun,
-    onSuccess: (run, variables) => {
-      const resume = resumesQuery.data?.find((entry) => entry.id === run.resume_id);
-      rememberRun({
-        run_id: run.run_id,
-        resume_label: resume ? resumeLabel(resume) : `Resume #${run.resume_id}`,
-        job_count: variables.job_texts.length,
-        created_at: run.created_at,
-      });
+    onSuccess: (run) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.runs.all });
       navigate(`/runs/${run.run_id}`);
     },
   });
@@ -112,16 +111,16 @@ export default function AnalyzePage() {
     <div className="space-y-10">
       <section>
         <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Where do you actually stand?
+          How well does your CV fit?
         </h1>
         <p className="mt-2 max-w-prose text-ink-muted">
-          Pick a CV, paste the postings you're eyeing, and get an honest verdict on each —
+          Pick a CV, paste in the jobs you're considering, and get an honest read on each one —
           matched skills, gaps, and whether it's worth applying.
         </p>
       </section>
 
       <section className="space-y-4">
-        <StepHeading step={1} title="Choose a CV" hint="Upload a new one or reuse a previous upload." />
+        <StepHeading step={1} title="Choose a CV" hint="Upload a new file or pick one you've used before." />
 
         {resumesQuery.isLoading && <p className="text-sm text-ink-muted">Loading your CVs…</p>}
         {resumesQuery.isError && (
@@ -158,14 +157,13 @@ export default function AnalyzePage() {
               event.target.value = "";
             }}
           />
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             disabled={upload.isPending}
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-md border border-line bg-white px-3 py-1.5 text-sm font-medium hover:border-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
           >
             {upload.isPending ? "Reading your CV…" : "Upload a CV"}
-          </button>
+          </Button>
           <span className="font-mono text-xs text-ink-faint">PDF or DOCX, up to 5 MB</span>
         </div>
         {upload.isError && (
@@ -176,8 +174,8 @@ export default function AnalyzePage() {
       <section className={`space-y-4 ${selectedResume ? "" : "pointer-events-none opacity-40"}`}>
         <StepHeading
           step={2}
-          title="Paste job postings"
-          hint={`Up to ${MAX_JOBS} postings, full text — one box per job.`}
+          title="Paste the jobs"
+          hint={`Up to ${MAX_JOBS} job descriptions — one per box, full text.`}
         />
 
         {jobTexts.map((text, index) => (
@@ -186,7 +184,7 @@ export default function AnalyzePage() {
               value={text}
               maxLength={MAX_JOB_CHARS}
               rows={6}
-              placeholder={`Job posting #${index + 1} — paste the full description here`}
+              placeholder={`Job #${index + 1} — paste the full description here`}
               onChange={(event) => setJobText(index, event.target.value)}
               disabled={!selectedResume || analyze.isPending}
               className="w-full resize-y rounded-md border border-line bg-white p-3 text-sm leading-relaxed placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-accent"
@@ -197,7 +195,7 @@ export default function AnalyzePage() {
                 onClick={() => setJobTexts((texts) => texts.filter((_, i) => i !== index))}
                 disabled={analyze.isPending}
                 className="absolute top-2 right-2 rounded px-1.5 text-sm text-ink-faint hover:text-fit-none focus-visible:outline-2 focus-visible:outline-accent"
-                aria-label={`Remove job posting ${index + 1}`}
+                aria-label={`Remove job ${index + 1}`}
               >
                 ✕
               </button>
@@ -206,35 +204,32 @@ export default function AnalyzePage() {
         ))}
 
         <div className="flex items-center justify-between">
-          <button
-            type="button"
+          <Button
+            variant="link"
             onClick={() => setJobTexts((texts) => [...texts, ""])}
             disabled={jobTexts.length >= MAX_JOBS || analyze.isPending}
-            className="text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
           >
-            + Add another posting
-          </button>
-          <button
-            type="button"
+            + Add another job
+          </Button>
+          <Button
             disabled={!canAnalyze}
             onClick={() =>
               selectedResume &&
               analyze.mutate({ resume_id: selectedResume.id, job_texts: filledTexts })
             }
-            className="rounded-md bg-accent px-5 py-2 text-sm font-semibold text-white hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
           >
             {analyze.isPending
               ? "Analyzing…"
               : filledTexts.length > 1
-                ? `Analyze ${filledTexts.length} postings`
-                : "Analyze posting"}
-          </button>
+                ? `Analyze ${filledTexts.length} jobs`
+                : "Analyze"}
+          </Button>
         </div>
 
         {analyze.isPending && (
           <div className="rounded-md border border-line bg-white px-4 py-3">
             <p className="text-sm text-ink-muted">
-              Reading each posting against{" "}
+              Reading each job against{" "}
               <span className="font-medium text-ink">{selectedResume && resumeLabel(selectedResume)}</span>
               's CV — usually under a minute.
             </p>
@@ -247,6 +242,27 @@ export default function AnalyzePage() {
           <p className="text-sm text-fit-none">Analysis failed: {errorMessage(analyze.error)}</p>
         )}
       </section>
+
+      {runsQuery.data && runsQuery.data.length > 0 && (
+        <section className="border-t border-line pt-8">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-mono text-xs tracking-[0.14em] text-ink-muted uppercase">
+              Recent analyses · {runsQuery.data.length}
+            </h2>
+            {runsQuery.data.length > RECENT_RUNS && (
+              <Link
+                to="/history"
+                className="rounded-sm text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                View all
+              </Link>
+            )}
+          </div>
+          <div className="mt-4">
+            <RunList runs={runsQuery.data.slice(0, RECENT_RUNS)} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

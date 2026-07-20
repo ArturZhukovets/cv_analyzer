@@ -4,3 +4,7 @@
 .env
 .playwright-mcp
 
+
+# Deployment secrets
+nginx/.htpasswd
+deploy.md

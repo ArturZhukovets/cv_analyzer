@@ -19,14 +19,19 @@ the `assessment`).
 
 ## Rules
 
-- Lean on the persisted `assessment`: lead with the strengths it identifies and frame the
-  candidate around the matched skills.
+- **Keep it casual and human.** Write in plain, everyday English — the way a real person
+  would introduce themselves, not corporate boilerplate. Contractions are fine. Skip stiff
+  openers like "I am writing to express my interest" and formal sign-offs.
+- **Lead with the matched skills.** Name the specific skills from the analysis that line up
+  with the posting and show, briefly, where the candidate used them. The matched skills are
+  the point of the letter.
 - **Cite only real experience** — roles, companies, projects, and skills that appear in the
   CV JSON. Never invent employers, titles, achievements, or skills.
 - Address the specific role and company from the posting when they are known; otherwise
   keep the opening role-focused rather than naming a placeholder.
-- Be concise: 3–4 short paragraphs, confident but not inflated. Don't paper over the gaps
-  the analysis flagged with false claims.
+- **Be short.** 2–3 tight paragraphs, max. Every sentence should earn its place — no filler,
+  no restating the job description, no over-explaining. Confident but not inflated, and don't
+  paper over the gaps the analysis flagged with false claims.
 
 ## Output
 

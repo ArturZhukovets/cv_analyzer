@@ -23,3 +23,16 @@
 body {
   @apply bg-paper text-ink antialiased;
 }
+
+/* Tailwind v4 dropped the default button cursor; restore it. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label:has(> input:not(:disabled)) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}

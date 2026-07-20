@@ -30,6 +30,10 @@ export interface ResumeRead {
 
 export type Recommendation = "strong_fit" | "possible_fit" | "stretch" | "not_a_fit";
 
+// A run-level verdict: the best per-job recommendation, or "invalid" when the
+// run's only analyzed postings weren't real job descriptions.
+export type RunVerdict = Recommendation | "invalid";
+
 export interface JobSkill {
   name: string;
   matched: boolean;
@@ -69,4 +73,26 @@ export interface RunDetailRead {
   resume_id: number;
   created_at: string;
   jobs: RunJobResultRead[];
+}
+
+export interface RunSummaryRead {
+  run_id: number;
+  resume_id: number;
+  resume_filename: string;
+  candidate_name: string | null;
+  top_job_title: string | null;
+  job_count: number;
+  best_recommendation: RunVerdict | null;
+  created_at: string;
+}
+
+export interface RunAskResponse {
+  run_id: number;
+  question: string;
+  answer: string;
+}
+
+export interface CoverLetterRead {
+  job_id: number;
+  cover_letter_md: string;
 }
