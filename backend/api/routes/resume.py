@@ -73,6 +73,8 @@ async def upload_resume(
                 text = parser.extract_docx_text(file_path)
             except ValueError as exc:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+            except Exception as exc:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Can not parse document. Make sure its a valid DOCX file.")
             if len(text) > settings.max_docx_chars:
                 raise HTTPException(
                     status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
