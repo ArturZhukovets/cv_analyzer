@@ -8,8 +8,6 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:1.27-alpine
-
-# Rendered to /etc/nginx/conf.d/default.conf at startup (envsubst on ${SERVER_NAME}).
-COPY default.conf.template /etc/nginx/templates/default.conf.template
-COPY --from=build /app/dist /usr/share/nginx/html
+# No runtime stage: this image only ever produces /app/dist.
+# deploy/deploy-frontend.sh extracts it and installs it for host nginx to
+# serve directly — see deploy.md.

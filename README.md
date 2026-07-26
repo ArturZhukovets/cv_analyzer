@@ -11,9 +11,13 @@ Requires Docker and an OpenAI API key.
 
 ```bash
 cp .env.example .env      # set OPENAI_API_KEY
-./run.sh                  # docker compose build + up  → http://localhost:8000
+./run.sh                  # docker compose build + up  → API at http://localhost:8000
 ./stop.sh                 # tear down
 ```
+
+`./run.sh` runs only the backend (Docker); pair it with `cd frontend && npm run
+dev` for the full app locally. In production, nginx runs on the host and serves
+the built frontend + proxies `/api` — see [deploy.md](deploy.md).
 
 Local dev (without Docker):
 
@@ -24,7 +28,7 @@ cd frontend && npm install && npm run dev    # Vite, proxies /api → :8000, :51
 
 `.env` keys: `OPENAI_API_KEY`, `OPENAI_MODEL` (cheap tier, default `gpt-5.4-mini`),
 `OPENAI_STRONG_MODEL` (strong tier, default `gpt-5.4`), `APP_PORT`. Open the app at
-[:5173](http://localhost:5173) (local) or [:8000](http://localhost:8000) (Docker).
+[:5173](http://localhost:5173) (Vite dev server; proxies API calls to :8000).
 
 ## How to use
 
@@ -56,7 +60,7 @@ cd frontend && npm install && npm run dev    # Vite, proxies /api → :8000, :51
 
 ```mermaid
 flowchart LR
-    Browser[Browser<br/>React SPA] --> Nginx[nginx<br/>serves SPA + proxies /api]
+    Browser[Browser<br/>React SPA] --> Nginx[host nginx<br/>serves SPA + proxies /api]
     Nginx --> API[FastAPI backend<br/>async]
     API --> OpenAI[OpenAI API<br/>mini + strong]
     API --> DB[(SQLite<br/>aiosqlite)]
@@ -82,8 +86,9 @@ the original upload stays on disk.
 
 **Stack.** Backend: FastAPI · async SQLAlchemy 2.0 + aiosqlite · pydantic-settings ·
 OpenAI SDK (`responses.parse` structured outputs) · `uv`. Frontend: Vite · React 19 +
-TS · Tailwind v4 (CSS-first) · TanStack Query v5 · react-router. Deployment: Docker
-Compose (nginx + backend), same-origin, no CORS.
+TS · Tailwind v4 (CSS-first) · TanStack Query v5 · react-router. Deployment: backend
+in Docker, host nginx serves the static build + proxies `/api` (see [deploy.md](deploy.md)),
+same-origin, no CORS.
 
 Endpoints: `POST /api/resume/upload`, `GET /api/resume`, `POST /api/runs`,
 `GET /api/runs`, `GET /api/runs/{id}`, `POST /api/runs/{id}/ask`,

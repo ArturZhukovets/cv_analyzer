@@ -5,6 +5,6 @@
 .playwright-mcp
 
 
-# Deployment secrets
-nginx/.htpasswd
+# Deployment secrets (htpasswd + certs now live directly on the VPS host,
+# outside this repo entirely)
 deploy.md
