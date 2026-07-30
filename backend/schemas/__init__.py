@@ -6,6 +6,7 @@ from schemas.runs import (
     RunCreate,
     RunDetailRead,
     RunJobResultRead,
+    RunMessageRead,
     RunRead,
     RunSummaryRead,
 )
@@ -25,4 +26,5 @@ __all__ = [
     "RunSummaryRead",
     "RunAskRequest",
     "RunAskResponse",
+    "RunMessageRead",
 ]

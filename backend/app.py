@@ -19,7 +19,9 @@ from services import DocumentParser, LLMService
 async def lifespan(app: "App") -> AsyncGenerator[None, None]:
     async with app.db_manager.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
     yield
+
     await app.db_manager.close()
 
 

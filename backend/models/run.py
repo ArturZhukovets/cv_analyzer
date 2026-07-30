@@ -9,6 +9,7 @@ from .base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from .job import Job
+    from .messages import RunMessage
     from .resume import Resume
 
 
@@ -24,4 +25,9 @@ class Run(Base, TimestampMixin):
     jobs: Mapped[list[Job]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
+    )
+    messages: Mapped[list[RunMessage]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="RunMessage.id",
     )

@@ -12,14 +12,34 @@ App that analyzes a CV against N job postings. FastAPI + SQLite backend in `back
 
 - Python 3.13, FastAPI, async SQLAlchemy 2.0 + `aiosqlite`
 - `pydantic-settings` for config (`configs/settings.py`, loaded from `.env`)
-- OpenAI (`openai` SDK, `client.responses.parse` structured outputs): cheap model for extraction/adjudication, stronger model for narrative
-- `bge-small-en-v1.5` embeddings in-memory (numpy) — no vector DB
+- LangChain 1.x (`langchain-openai`, no direct `openai` dependency): cheap model for extraction/adjudication, stronger model for narrative. **No LangGraph** — `/ask` is a plain `ainvoke` with history loaded from the DB.
+- **No RAG, no embeddings, no vector DB** — on purpose. A CV + a handful of postings fits in one context window; inputs are parsed to structured JSON and passed whole.
 - `uv` for dependency management (`uv add`, `uv run`)
 - Run: `cd backend && uv run main.py` (port 8000)
 
+### LLM layer (`backend/services/llm/`)
+
+Everything that talks to a model lives here; `LLMService` is the only facade routes see (unchanged signatures, injected via `api/dependencies.py`). See [docs/langchain-notes.md](docs/langchain-notes.md) for the annotated walkthrough.
+
+| file | role |
+|---|---|
+| `models.py` | `build_chat_model` → `init_chat_model` on a `provider:model` string; `use_responses_api=True` for OpenAI |
+| `prompts.py` | `Path` constants for `backend/prompts/*.md`, read at call time |
+| `messages.py` | pure builders: sections → `HumanMessage` text blocks, PDF → standard `file` block, `build_ask_context` for the `/ask` blob |
+| `service.py` | the three chains, composed once in `__init__`, plus the 5 public methods |
+
+Rules to keep:
+
+- Models are configured by `LLM_FAST_MODEL` / `LLM_STRONG_MODEL` (`provider:model` strings) — **not** `OPENAI_MODEL`. Two fixed instances (`_fast`, `_strong`); the tier is a property of the task, not a runtime choice.
+- Chains are built once in `LLMService.__init__`, never per request.
+- `with_structured_output(..., include_raw=True)` + `_parsed_or_none` preserves the `-> X | None` contract callers depend on. If strict JSON-schema mode ever complains, fix it with `method=` — **never** by editing `schemas/jobs.py` or `schemas/resume.py` (`jobs.result_json` is re-validated against `JobAnalysis` on every read, so a shape change breaks stored rows).
+- Prompt files in `backend/prompts/` are byte-sensitive; `build_sections_message`'s `# {title}` framing is part of the prompt contract. No `ChatPromptTemplate` — the prompts contain JSON braces that templating would break.
+- Fan-out goes through `_analyze.abatch(config={"max_concurrency": ...}, return_exceptions=True)` — never bare `asyncio.gather`. Output order matches input order; `analysis.py` relies on it (`zip(..., strict=True)`).
+- `/ask` conversation history lives in the `run_messages` table, not in a checkpointer. The route loads the last `ASK_HISTORY_LIMIT` turns and passes them to `answer_run_question`; the CV + jobs blob (`build_ask_context`) is rebuilt from the DB and prepended **every** turn, so it never accumulates in history and answers always reflect current data. Question and answer are persisted together in one commit.
+
 ### Data model (`backend/models/`)
 
-`Resume` → `Run` → `Job`. All tables carry `id` + `created_at` (via `TimestampMixin`). `Resume.parsed_json` holds the LLM extraction (`ExtractedResume`, null until extraction runs). Each `Job` stores the pasted `raw_text`, an `is_valid` flag, and its analysis outcome inline — `result_json` (schema-validated `JobAnalysis` from `schemas/jobs.py`, null on failure), `error` (failure marker), and `cover_letter_md` — so repeat views cost zero LLM calls.
+`Resume` → `Run` → `Job`, plus `Run` → `RunMessage` (the `/ask` transcript, `role` + `content`, ordered by `id`). All tables carry `id` + `created_at` (via `TimestampMixin`). `Resume.parsed_json` holds the LLM extraction (`ExtractedResume`, null until extraction runs). Each `Job` stores the pasted `raw_text`, an `is_valid` flag, and its analysis outcome inline — `result_json` (schema-validated `JobAnalysis` from `schemas/jobs.py`, null on failure), `error` (failure marker), and `cover_letter_md` — so repeat views cost zero LLM calls.
 
 ## Frontend (`frontend/`)
 

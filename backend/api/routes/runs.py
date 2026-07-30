@@ -6,8 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from langchain_core.messages import AIMessage, HumanMessage
+
 from api.dependencies import get_db, get_llm_service
 from models.job import Job
+from models.messages import RunMessage
 from models.resume import Resume
 from models.run import Run
 from schemas import (
@@ -17,10 +20,12 @@ from schemas import (
     RunCreate,
     RunDetailRead,
     RunJobResultRead,
+    RunMessageRead,
     RunRead,
     RunSummaryRead,
 )
 from services import LLMService, analyze_run
+
 
 router = APIRouter(prefix="/api/runs", tags=["Runs"])
 RECOMMENDATION_ORDER = {
@@ -29,12 +34,19 @@ RECOMMENDATION_ORDER = {
     "stretch": 2,
     "not_a_fit": 3,
 }
+# Turns replayed to the model per question. The blob of CV + jobs is re-sent every
+# turn, so history is what makes the prompt grow — cap it.
+ASK_HISTORY_LIMIT = 20
 
 
 async def _get_run_or_404(run_id: int, db: AsyncSession) -> Run:
     result = await db.execute(
         select(Run)
-        .options(selectinload(Run.resume), selectinload(Run.jobs))
+        .options(
+            selectinload(Run.resume),
+            selectinload(Run.jobs),
+            selectinload(Run.messages),
+        )
         .where(Run.id == run_id)
     )
     run = result.scalar_one_or_none()
@@ -44,6 +56,20 @@ async def _get_run_or_404(run_id: int, db: AsyncSession) -> Run:
             detail=f"Run {run_id} not found",
         )
     return run
+
+
+async def _save_exchange(
+    run_id: int, question: str, answer: str, db: AsyncSession
+) -> None:
+    """Persist the question and its answer together — a half-written exchange would
+    replay to the model as a question nobody answered."""
+    db.add_all(
+        [
+            RunMessage(run_id=run_id, role="user", content=question),
+            RunMessage(run_id=run_id, role="assistant", content=answer),
+        ]
+    )
+    await db.commit()
 
 
 def _to_job_result_read(job: Job) -> RunJobResultRead:
@@ -201,5 +227,29 @@ async def ask_run(
         for job in run.jobs
     ]
 
-    answer = await llm.answer_run_question(cv_json, jobs_context, payload.question)
+    history: list[AIMessage | HumanMessage] = [
+        AIMessage(content=message.content)
+        if message.role == "assistant"
+        else HumanMessage(content=message.content)
+        for message in run.messages[-ASK_HISTORY_LIMIT:]
+    ]
+
+    answer = await llm.answer_run_question(
+        cv_json,
+        jobs_context,
+        payload.question,
+        history,
+    )
+
+    await _save_exchange(run.id, payload.question, answer, db)
+
     return RunAskResponse(run_id=run.id, question=payload.question, answer=answer)
+
+
+@router.get("/{run_id}/messages")
+async def list_run_messages(
+    run_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[RunMessageRead]:
+    run = await _get_run_or_404(run_id, db)
+    return [RunMessageRead.model_validate(message) for message in run.messages]

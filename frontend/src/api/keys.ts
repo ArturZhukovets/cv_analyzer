@@ -5,5 +5,6 @@ export const queryKeys = {
   runs: {
     all: ["runs"] as const,
     detail: (runId: number) => ["runs", runId] as const,
+    messages: (runId: number) => ["runs", runId, "messages"] as const,
   },
 };

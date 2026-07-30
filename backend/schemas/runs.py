@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from schemas.jobs import JobAnalysis
 
@@ -68,3 +68,12 @@ class RunAskResponse(BaseModel):
     run_id: int
     question: str
     answer: str
+
+
+class RunMessageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime

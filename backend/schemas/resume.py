@@ -42,7 +42,7 @@ class ExtractedResume(BaseModel):
 
     skills: list[str] = Field(
         default_factory=list,
-        description="Flat, deduplicated, canonical skill names used for embedding match.",
+        description="Flat, deduplicated, canonical skill names, matched against job requirements during analysis.",
     )
     experience: list[ExperienceEntry] = Field(default_factory=list)
 

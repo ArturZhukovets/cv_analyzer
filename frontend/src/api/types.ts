@@ -92,6 +92,13 @@ export interface RunAskResponse {
   answer: string;
 }
 
+export interface RunMessageRead {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
 export interface CoverLetterRead {
   job_id: number;
   cover_letter_md: string;

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 
-import { ApiError, askRun, createCoverLetter, getRun } from "@/api/client";
+import { ApiError, askRun, createCoverLetter, getRun, getRunMessages } from "@/api/client";
 import { queryKeys } from "@/api/keys";
 import type { JobAnalysis, RunJobResultRead } from "@/api/types";
 import Button from "@/components/Button";
@@ -111,16 +111,22 @@ function CoverLetterSection({ jobId }: { jobId: number }) {
 
 function AskPanel({ runId }: { runId: number }) {
   const [question, setQuestion] = useState("");
-  const [thread, setThread] = useState<{ question: string; answer: string }[]>([]);
+  const queryClient = useQueryClient();
+
+  const messages = useQuery({
+    queryKey: queryKeys.runs.messages(runId),
+    queryFn: () => getRunMessages(runId),
+  });
 
   const ask = useMutation({
     mutationFn: (asked: string) => askRun(runId, asked),
-    onSuccess: (data) => {
-      setThread((prev) => [...prev, { question: data.question, answer: data.answer }]);
+    onSuccess: () => {
       setQuestion("");
+      void queryClient.invalidateQueries({ queryKey: queryKeys.runs.messages(runId) });
     },
   });
 
+  const thread = messages.data ?? [];
   const trimmed = question.trim();
   const canAsk = trimmed.length > 0 && !ask.isPending;
 
@@ -136,14 +142,31 @@ function AskPanel({ runId }: { runId: number }) {
         from your CV and these results.
       </p>
 
-      {thread.length > 0 && (
-        <div className="mt-4 space-y-4 border-t border-line pt-4">
-          {thread.map((turn, i) => (
-            <div key={i} className="space-y-2">
-              <p className="text-sm font-medium text-ink-muted">“{turn.question}”</p>
-              <Markdown>{turn.answer}</Markdown>
-            </div>
-          ))}
+      {messages.isPending && <Skeleton className="mt-4 h-16" />}
+
+      {(thread.length > 0 || ask.isPending) && (
+        <div className="mt-4 space-y-2 border-t border-line pt-4">
+          {thread.map((message) =>
+            message.role === "user" ? (
+              <p
+                key={message.id}
+                className="pt-2 text-sm font-medium text-ink-muted first:pt-0"
+              >
+                “{message.content}”
+              </p>
+            ) : (
+              <Markdown key={message.id}>{message.content}</Markdown>
+            ),
+          )}
+
+          {ask.isPending && (
+            <>
+              <p className="pt-2 text-sm font-medium text-ink-muted first:pt-0">
+                “{ask.variables}”
+              </p>
+              <p className="text-sm text-ink-faint">Thinking…</p>
+            </>
+          )}
         </div>
       )}
 

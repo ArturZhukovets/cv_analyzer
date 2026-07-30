@@ -8,5 +8,7 @@ from .base import Base
 from .job import Job
 from .resume import Resume
 from .run import Run
+from .messages import RunMessage
 
-__all__ = ["Base", "Resume", "Run", "Job"]
+__all__ = ["Base", "Resume", "Run", "Job", "RunMessage"]
+

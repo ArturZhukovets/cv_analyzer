@@ -3,6 +3,8 @@
 .vscode/
 .env
 .playwright-mcp
+.claude
+.agents
 
 
 # Deployment secrets (htpasswd + certs now live directly on the VPS host,

@@ -26,8 +26,9 @@ cd backend && uv run main.py                 # Python 3.13, uv → :8000
 cd frontend && npm install && npm run dev    # Vite, proxies /api → :8000, :5173
 ```
 
-`.env` keys: `OPENAI_API_KEY`, `OPENAI_MODEL` (cheap tier, default `gpt-5.4-mini`),
-`OPENAI_STRONG_MODEL` (strong tier, default `gpt-5.4`), `APP_PORT`. Open the app at
+`.env` keys: `OPENAI_API_KEY`, `LLM_FAST_MODEL` (cheap tier, default
+`openai:gpt-5.4-mini`), `LLM_STRONG_MODEL` (strong tier, default `openai:gpt-5.4`),
+`APP_PORT`. Model ids are `provider:model` strings. Open the app at
 [:5173](http://localhost:5173) (Vite dev server; proxies API calls to :8000).
 
 ## How to use
@@ -85,7 +86,8 @@ persisted; re-running just re-reads the file. Only `parsed_json` lives in the DB
 the original upload stays on disk.
 
 **Stack.** Backend: FastAPI · async SQLAlchemy 2.0 + aiosqlite · pydantic-settings ·
-OpenAI SDK (`responses.parse` structured outputs) · `uv`. Frontend: Vite · React 19 +
+LangChain + LangGraph (structured outputs, checkpointed `/ask` memory — see
+[docs/langchain-notes.md](docs/langchain-notes.md)) · `uv`. Frontend: Vite · React 19 +
 TS · Tailwind v4 (CSS-first) · TanStack Query v5 · react-router. Deployment: backend
 in Docker, host nginx serves the static build + proxies `/api` (see [deploy.md](deploy.md)),
 same-origin, no CORS.

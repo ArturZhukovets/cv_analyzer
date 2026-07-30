@@ -2,6 +2,7 @@ import type {
   CoverLetterRead,
   ResumeRead,
   RunAskResponse,
+  RunMessageRead,
   RunCreate,
   RunDetailRead,
   RunRead,
@@ -72,6 +73,10 @@ export function askRun(runId: number, question: string): Promise<RunAskResponse>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question }),
   });
+}
+
+export function getRunMessages(runId: number): Promise<RunMessageRead[]> {
+  return request(`/runs/${runId}/messages`);
 }
 
 export function createCoverLetter(jobId: number, regenerate = false): Promise<CoverLetterRead> {

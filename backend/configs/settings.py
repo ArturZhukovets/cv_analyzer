@@ -24,10 +24,15 @@ class AppSettings(BaseSettings):
     db_echo: bool = False
 
     # --- LLM ---
-    openai_api_key: str
-    # Cheap model for extraction/adjudication; stronger model for narrative judgment.
-    openai_model: str = "gpt-5.4-mini"
-    openai_strong_model: str = "gpt-5.4"
+    # `provider:model` strings feed init_chat_model directly (the multi-provider seam).
+    # Fast tier: extraction/adjudication; strong tier: narrative judgment.
+    llm_fast_model: str = "openai:gpt-5.4-mini"
+    llm_strong_model: str = "openai:gpt-5.4"
+    llm_max_concurrency: int = 4
+    llm_max_retries: int = 2
+    llm_timeout_s: float = 120.0
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
 
     # --- File Storage ---
     data_dir: Path = BASE_DIR / "data"
