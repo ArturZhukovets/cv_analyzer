@@ -15,8 +15,7 @@ cp .env.example .env      # set OPENAI_API_KEY
 ./stop.sh                 # tear down
 ```
 
-`./run.sh` runs only the backend (Docker); pair it with `cd frontend && npm run
-dev` for the full app locally. In production, nginx runs on the host and serves
+`./run.sh` runs only the backend (Docker); pair it with `cd frontend && npm run dev` for the full app locally. In production, nginx runs on the host and serves
 the built frontend + proxies `/api` — see [deploy.md](deploy.md).
 
 Local dev (without Docker):
@@ -35,27 +34,27 @@ cd frontend && npm install && npm run dev    # Vite, proxies /api → :8000, :51
 
 **1. Choose a CV.** Upload a PDF/DOCX, or pick one you've used before.
 
-![Choose a CV](docs/screens/01-choose-cv.png)
+Choose a CV
 
 **2. Paste jobs & analyze.** Up to 5 full job descriptions, then hit Analyze.
 
-![Paste jobs](docs/screens/02-paste-jobs.png)
+Paste jobs
 
 **3. Read the results.** Each job gets a fit verdict, a written assessment, and matched/missing skills (sorted best-fit first).
 
-![Results](docs/screens/03-results.png)
+Results
 
 **4. Draft a cover letter** per job, on demand. Copy or regenerate.
 
-![Cover letter](docs/screens/04-cover-letter.png)
+Cover letter
 
 **5. Ask follow-ups.** Free-form Q&A grounded in your CV and this run's results.
 
-![Ask about results](docs/screens/05-ask.png)
+Ask about results
 
 **6. Reopen past runs.** History (or Recent analyses on the home page) opens saved results with no new LLM calls.
 
-![History](docs/screens/06-history.png)
+History
 
 ## b. Architecture overview
 
@@ -68,6 +67,8 @@ flowchart LR
     API --> Disk[(data_dir<br/>original uploads)]
 ```
 
+
+
 Data model: `Resume → Run → (Job, JobResult)`. A **Run** is the unit of history:
 one CV + N jobs at a point in time. Two-stage LLM flow, split on purpose:
 
@@ -79,6 +80,8 @@ flowchart LR
     ANALYZE --> RESULT["JobResult, persisted:<br/>recommendation, matched/missing skills, assessment"]
     CVJSON --> ONDEMAND[strong: ask / cover-letter, on demand]
 ```
+
+
 
 - **PDFs** go to the model as raw files (vision handles scans/layout). **DOCX** text
 is extracted locally with `python-docx` (capped by `max_docx_chars`) and never
@@ -116,6 +119,8 @@ preserve the no-CORS posture.
 error/latency, autoscaling on queue depth.
 - **Cost & safety at scale:** per-user rate limits and spend caps, response caching by
 CV+job hash, and auth/multi-tenancy (currently none).
+
+
 
 ## d. RAG / LLM approach & decisions
 
@@ -189,6 +194,8 @@ deterministic logic (scoring, skill matching) or design decisions.
 3. Validate user input on the way in.
 4. Polish the UI.
 5. Add a common parsing layer for incoming CV files (today only `.pdf` and `.docx`, each with its own handler).
+
+
 
 ## i. Note
 

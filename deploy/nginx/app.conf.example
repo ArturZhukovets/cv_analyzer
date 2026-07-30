@@ -1,12 +1,9 @@
-# Host nginx config for the VPS — this app + the Telegram bot webhook, on one
-# domain. Copy to /etc/nginx/sites-available/, fill in the placeholders below,
-# symlink into sites-enabled, then `sudo nginx -t && sudo systemctl reload nginx`.
+# Host nginx config for the VPS. Copy to /etc/nginx/sites-available/, fill in
+# the placeholder below, symlink into sites-enabled, then
+# `sudo nginx -t && sudo systemctl reload nginx`.
 #
 # Fill in:
-#   __SERVER_NAME__          e.g. 203-0-113-5.sslip.io or your real domain
-#   __TELEGRAM_WEBHOOK_PATH__  a long random/secret path segment (not guessable —
-#                               Telegram webhooks aren't otherwise authenticated)
-#   __TELEGRAM_BOT_PORT__     the local port your bot's webhook listener binds to
+#   __SERVER_NAME__   e.g. 203-0-113-5.sslip.io or your real domain
 
 # --- HTTP: serve ACME challenge, redirect everything else to HTTPS ---
 server {
@@ -23,7 +20,7 @@ server {
     }
 }
 
-# --- HTTPS: TLS + basic-auth gate for the CV app, plus the bot webhook ---
+# --- HTTPS: TLS + basic-auth gate for the CV app ---
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
@@ -42,17 +39,6 @@ server {
     # Gate the whole CV app behind HTTP basic auth (no app-level login yet).
     auth_basic           "Restricted";
     auth_basic_user_file /etc/nginx/.htpasswd;
-
-    # --- Telegram bot webhook: unauthenticated (Telegram can't send Basic-Auth
-    # creds) and matched before the SPA fallback. The secret path segment is
-    # the access control here — keep it out of git, treat it like a credential.
-    location /telegram/__TELEGRAM_WEBHOOK_PATH__/ {
-        auth_basic off;
-        proxy_pass http://127.0.0.1:__TELEGRAM_BOT_PORT__/;
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
 
     location /api/ {
         proxy_pass http://127.0.0.1:8000;

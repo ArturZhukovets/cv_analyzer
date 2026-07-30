@@ -1,6 +1,7 @@
 export const queryKeys = {
   resumes: {
     all: ["resumes"] as const,
+    detail: (resumeId: number) => ["resumes", resumeId] as const,
   },
   runs: {
     all: ["runs"] as const,

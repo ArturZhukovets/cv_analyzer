@@ -1,5 +1,5 @@
 from schemas.jobs import CoverLetterRead, CoverLetterRequest, JobAnalysis, JobSkill
-from schemas.resume import ExperienceEntry, ExtractedResume, ResumeRead
+from schemas.resume import ExperienceEntry, ExtractedResume, ResumeDetail, ResumeRead
 from schemas.runs import (
     RunAskRequest,
     RunAskResponse,
@@ -14,6 +14,7 @@ from schemas.runs import (
 __all__ = [
     "ExperienceEntry",
     "ExtractedResume",
+    "ResumeDetail",
     "ResumeRead",
     "JobAnalysis",
     "JobSkill",

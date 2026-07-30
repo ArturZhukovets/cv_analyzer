@@ -1,32 +1,43 @@
-# React + TypeScript + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite SPA. Tailwind CSS v4 is wired through `@tailwindcss/vite` (see `vite.config.ts` and `src/index.css`) — there is no separate `tailwind.config.js` or PostCSS step.
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+New utility classes in `src/` are picked up automatically while the dev server is running:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+cd frontend
+npm install   # first time only
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+No extra Tailwind compile step is needed in dev; save your files and Vite HMR refreshes the CSS.
+
+## Production static build (Tailwind + app)
+
+After adding or changing Tailwind classes (or `@theme` tokens in `src/index.css`), rebuild the static assets:
+
+```bash
+cd frontend
+npm install   # if dependencies changed
+npm run build
+```
+
+This runs TypeScript checking (`tsc -b`) then `vite build`. The Tailwind plugin scans your source files, tree-shakes unused utilities, and emits hashed CSS into `dist/`.
+
+Preview the production bundle locally:
+
+```bash
+npm run preview
+```
+
+## Deploy
+
+On the VPS, the repo’s deploy script builds via Docker and copies `dist/` to nginx:
+
+```bash
+./deploy/deploy-frontend.sh
+```
+
+See [deploy.md](../deploy.md) for the full production setup.

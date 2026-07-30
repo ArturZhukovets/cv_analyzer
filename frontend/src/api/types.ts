@@ -26,6 +26,9 @@ export interface ResumeRead {
   created_at: string;
 }
 
+/** Detail endpoint — same shape as list, with schema-validated parsed_json. */
+export type ResumeDetail = ResumeRead;
+
 // Mirrors backend/schemas/jobs.py + runs.py 1:1.
 
 export type Recommendation = "strong_fit" | "possible_fit" | "stretch" | "not_a_fit";

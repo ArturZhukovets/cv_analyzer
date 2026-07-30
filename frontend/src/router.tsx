@@ -4,6 +4,7 @@ import Layout from "@/components/Layout";
 import AnalyzePage from "@/pages/AnalyzePage";
 import HistoryPage from "@/pages/HistoryPage";
 import NotFoundPage from "@/pages/NotFoundPage";
+import ResumePage from "@/pages/ResumePage";
 import RunPage from "@/pages/RunPage";
 
 export const router = createBrowserRouter([
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
     errorElement: <NotFoundPage />,
     children: [
       { index: true, element: <AnalyzePage /> },
+      { path: "resumes/:resumeId", element: <ResumePage /> },
       { path: "runs/:runId", element: <RunPage /> },
       { path: "history", element: <HistoryPage /> },
       { path: "*", element: <NotFoundPage /> },

@@ -1,5 +1,7 @@
 import type {
   CoverLetterRead,
+  ExtractedResume,
+  ResumeDetail,
   ResumeRead,
   RunAskResponse,
   RunMessageRead,
@@ -33,6 +35,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(response.status, detail);
   }
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return response.json() as Promise<T>;
 }
 
@@ -42,6 +47,25 @@ export function getHealth(): Promise<{ message: string }> {
 
 export function listResumes(): Promise<ResumeRead[]> {
   return request("/resume");
+}
+
+export function getResume(resumeId: number): Promise<ResumeDetail> {
+  return request(`/resume/${resumeId}`);
+}
+
+export function updateResume(
+  resumeId: number,
+  payload: ExtractedResume,
+): Promise<ResumeDetail> {
+  return request(`/resume/${resumeId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteResume(resumeId: number): Promise<void> {
+  return request(`/resume/${resumeId}`, { method: "DELETE" });
 }
 
 export function uploadResume(file: File): Promise<ResumeRead> {

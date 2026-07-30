@@ -54,3 +54,7 @@ class ExtractedResume(BaseModel):
             "comparison against job descriptions."
         ),
     )
+
+
+class ResumeDetail(ResumeRead):
+    parsed_json: ExtractedResume | None

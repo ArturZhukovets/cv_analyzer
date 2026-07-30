@@ -3,14 +3,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_db, get_document_parser, get_llm_service, get_settings
 from configs.settings import AppSettings
 from models.resume import Resume
-from schemas import ResumeRead
+from schemas import ExtractedResume, ResumeDetail, ResumeRead
 from services import DocumentParser, LLMService
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
@@ -34,6 +34,52 @@ async def list_resumes(
     result = await db.execute(select(Resume).order_by(Resume.created_at.desc()))
     resumes = result.scalars().all()
     return [ResumeRead.model_validate(resume) for resume in resumes]
+
+
+@router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_resume(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[AppSettings, Depends(get_settings)],
+    resume_id: int,
+) -> Response:
+    resume = await db.get(Resume, resume_id)
+    if resume is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume not found")
+        
+    file_path = settings.data_dir / resume.filename
+    await db.delete(resume)
+    await db.commit()
+    file_path.unlink(missing_ok=True)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{resume_id}")
+async def detail_resume(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    resume_id: int,
+) -> ResumeDetail:
+    result = await db.execute(select(Resume).where(Resume.id == resume_id))
+    resume = result.scalar_one_or_none()
+    if not resume:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume not found")
+    return ResumeDetail.model_validate(resume)
+
+
+@router.put("/{resume_id}")
+async def update_resume(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    resume_id: int,
+    payload: ExtractedResume,
+) -> ResumeDetail:
+    result = await db.execute(select(Resume).where(Resume.id == resume_id))
+    resume = result.scalar_one_or_none()
+    if not resume:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume not found")
+
+    resume.parsed_json = payload.model_dump()
+    await db.commit()
+    await db.refresh(resume)
+    return ResumeDetail.model_validate(resume)
 
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
@@ -94,3 +140,4 @@ async def upload_resume(
         raise
 
     return ResumeRead.model_validate(resume)
+

@@ -2,11 +2,19 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 
-import { ApiError, createRun, listResumes, listRuns, uploadResume } from "@/api/client";
+import {
+  ApiError,
+  createRun,
+  deleteResume,
+  listResumes,
+  listRuns,
+  uploadResume,
+} from "@/api/client";
 import { queryKeys } from "@/api/keys";
 import type { ResumeRead } from "@/api/types";
 import Button from "@/components/Button";
 import RunList from "@/components/RunList";
+import TrashIcon from "@/components/TrashIcon";
 import { formatDate } from "@/lib/format";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
@@ -34,38 +42,69 @@ function ResumeOption({
   resume,
   selected,
   onSelect,
+  onDelete,
+  deleting,
 }: {
   resume: ResumeRead;
   selected: boolean;
   onSelect: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   const extracted = resume.parsed_json !== null;
   return (
-    <label
-      className={`flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 transition-colors ${
+    <div
+      className={`flex items-center gap-3 rounded-md border px-4 py-3 transition-colors ${
         selected
           ? "border-accent bg-accent/5"
           : "border-line bg-white hover:border-ink-faint"
-      } ${extracted ? "" : "cursor-not-allowed opacity-50"}`}
+      } ${extracted ? "" : "opacity-50"}`}
     >
-      <input
-        type="radio"
-        name="resume"
-        className="accent-accent"
-        checked={selected}
-        disabled={!extracted}
-        onChange={onSelect}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{resumeLabel(resume)}</span>
-        <span className="mt-0.5 block truncate font-mono text-xs text-ink-muted">
-          {resume.filename} · {formatDate(resume.created_at)}
-          {extracted
-            ? ` · ${resume.parsed_json!.skills.length} skills`
-            : " · couldn't read this file"}
+      <label className={`flex min-w-0 flex-1 items-center gap-3 ${extracted ? "cursor-pointer" : "cursor-not-allowed"}`}>
+        <input
+          type="radio"
+          name="resume"
+          className="accent-accent"
+          checked={selected}
+          disabled={!extracted}
+          onChange={onSelect}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{resumeLabel(resume)}</span>
+          <span className="mt-0.5 block truncate font-mono text-xs text-ink-muted">
+            {resume.filename} · {formatDate(resume.created_at)}
+            {extracted
+              ? ` · ${resume.parsed_json!.skills.length} skills`
+              : " · couldn't read this file"}
+          </span>
         </span>
-      </span>
-    </label>
+      </label>
+      <div className="ml-2 flex shrink-0 items-center gap-4 sm:ml-3 sm:gap-5">
+        <Link
+          to={`/resumes/${resume.id}`}
+          className="rounded-sm px-1 py-2 text-sm font-medium text-accent hover:text-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          View
+        </Link>
+        <button
+          type="button"
+          className="flex size-10 items-center justify-center rounded text-fit-none transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
+          disabled={deleting}
+          aria-label="Delete CV"
+          onClick={() => {
+            if (
+              window.confirm(
+                "Delete this CV and all analyses that used it? This can't be undone.",
+              )
+            ) {
+              onDelete();
+            }
+          }}
+        >
+          <TrashIcon className="size-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -86,6 +125,16 @@ export default function AnalyzePage() {
     onSuccess: (resume) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.resumes.all });
       if (resume.parsed_json !== null) setSelectedId(resume.id);
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: deleteResume,
+    onSuccess: (_void, resumeId) => {
+      setSelectedId((current) => (current === resumeId ? null : current));
+      queryClient.removeQueries({ queryKey: queryKeys.resumes.detail(resumeId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.resumes.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.runs.all });
     },
   });
 
@@ -136,6 +185,8 @@ export default function AnalyzePage() {
               resume={resume}
               selected={selectedId === resume.id}
               onSelect={() => setSelectedId(resume.id)}
+              onDelete={() => remove.mutate(resume.id)}
+              deleting={remove.isPending && remove.variables === resume.id}
             />
           ))}
           {resumesQuery.data?.length === 0 && (
@@ -168,6 +219,9 @@ export default function AnalyzePage() {
         </div>
         {upload.isError && (
           <p className="text-sm text-fit-none">Upload failed: {errorMessage(upload.error)}</p>
+        )}
+        {remove.isError && (
+          <p className="text-sm text-fit-none">Delete failed: {errorMessage(remove.error)}</p>
         )}
       </section>
 
